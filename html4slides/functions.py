@@ -1,19 +1,38 @@
 #-*-coding:utf-8-*-
 import sys
 from markdown import markdown
-from BeautifulSoup import BeautifulSoup, Tag
-
-
-def get_class(class_name):
-    #cl = "markups.%s" % class_name
-    #d = cl.rfind('.')
-    m = __import__('markups', globals(), locals(), [class_name])
-    return m
 
 
 def check_args(args):
-    markup_class = get_class("markups.%s" % args.markup)
-    print markup_class().__class__
+    markup_name = "%sMarkup" % (args.markup or 'Markdown')
+    markup_class = get_class("markups.%s.%s" % (markup_name.lower(), markup_name))
+
+
+def get_class(class_name):
+    d = class_name.rfind('.')
+    classname = class_name[d+1:]
+    m = __import__(class_name[:d], globals(), locals(), [classname])
+    return getattr(m, classname)
+
+
+def get_markup_names(name):
+    markup_name = "%sMarkup" % (name or 'Markdown')
+    return markup_name, "markups.%s.%s" % (markup_name.lower(), markup_name)
+
+
+def get_markup_class(name):
+    markup_name, markup_class_name = get_markup_names(name)
+    return get_class(markup_class_name)
+
+
+def get_parser_names(name):
+    parser_name = "%sParser" % (name or 'Deck')
+    return parser_name, "parsers.%s.%s" % (parser_name.lower(), parser_name)
+
+
+def get_parser_class(name):
+    parser_name, parser_class_name = get_parser_names(name)
+    return get_class(parser_class_name)
 
 
 def get_file_contents(filename):
@@ -29,55 +48,17 @@ def get_file_contents(filename):
 
 def show_slides(args):
     contents = get_file_contents(args.file)
-    soup = BeautifulSoup(markdown(contents))
 
-    hsoup = BeautifulSoup()
-    html = Tag(hsoup, 'html')
-    hsoup.append(html)
+    markup_class = get_markup_class(args.markup)
+    markup = markup_class(contents)
+    markup.prepare()
+    markup.markup()
+    markup.finish()
 
-    head = Tag(hsoup, 'head')
-    title = Tag(hsoup, 'title')
-    title.setString(args.file)
-    head.append(title)
+    parser_class = get_parser_class(args.parser)
+    parser = parser_class(args.title, markup.html_content)
+    parser.prepare()
+    parser.parse()
+    parser.finish()
 
-    link = Tag(hsoup, 'link')
-    link['rel'] = 'stylesheet'
-    link['type'] = 'text/css'
-    if args.offline:
-        link['href'] = 'default.css'
-    else:
-        link['href'] = 'http://gdg-xian.github.io/html5slides-markdown/themes/default.css'
-    head.append(link)
-
-    script = Tag(hsoup, 'script')
-    if args.offline:
-        script['src'] = 'html5slides.js'
-    else:
-        script['src'] = 'http://gdg-xian.github.io/html5slides-markdown/javascripts/html5slides.js'
-    head.append(script)
-    html.append(head)
-
-    body = Tag(hsoup, 'body')
-    body['style'] = 'display:none'
-    section = Tag(hsoup, 'section')
-    section['class'] = 'slides layout-regular template-default'
-    body.append(section)
-    elements = []
-    elements.append(soup.first())
-    elements.extend(soup.first().findNextSiblings())
-    article = Tag(hsoup, 'article')
-    section.append(article)
-    for element in elements:
-        if element.name == 'hr':
-            article = Tag(hsoup, 'article')
-            section.append(article)
-        else:
-            article.append(element)
-
-    html.append(body)
-
-    return prettify(html)
-
-
-def prettify(html):
-    return "<!DOCTYPE html>\n\n%s" % html
+    print parser.html_content

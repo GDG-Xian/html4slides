@@ -11,6 +11,10 @@ def prepare():
                     help="file to parse",
                     type=str,
                     action="store")
+    parser.add_argument("--title",
+                    help="title for this slides",
+                    type=str,
+                    action="store")
     parser.add_argument("--parser",
                     help="file to parse",
                     type=str,
