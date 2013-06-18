@@ -1,6 +1,5 @@
 #-*-coding:utf-8-*-
 import sys
-from markdown import markdown
 
 
 def check_args(args):
